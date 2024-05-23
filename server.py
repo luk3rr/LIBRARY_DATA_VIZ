@@ -8,6 +8,7 @@
 # Usage:
 #   - Run the script and open a web browser at http://127.0.0.1:8050/
 
+import json
 import sqlite3
 import pandas as pd
 import plotly.express as px
@@ -24,6 +25,22 @@ DB_FOLDER = "sqlite_db"
 DB_FILE = "livros.db"
 DB_PATH = f"{DB_FOLDER}/{DB_FILE}"
 TEMPLATE_COLOR = "plotly_white"
+
+
+# Função para salvar o layout em um JSON
+def save_layout(layout):
+    with open("layout_positions.json", "w") as json_file:
+        json.dump(layout, json_file)
+
+
+# Função para carregar o layout do JSON
+def load_layout():
+    try:
+        with open("layout_positions.json", "r") as json_file:
+            layout = json.load(json_file)
+        return layout
+    except FileNotFoundError:
+        return None
 
 
 def perform_query(query) -> pd.DataFrame:
@@ -457,231 +474,241 @@ def get_books_availability():
 
 app = Dash(title="Acervo dashboard")
 
+
 # Layout do aplicativo
-app.layout = dbc.Container(
-    [
-        html.H1(
-            "Acervo dashboard",
-            style={
-                "textAlign": "center",
-                "margin": "center",
-                "font-size": "40px",
-                "font-family": "Arial",
-                "font-weight": "bold",
-            },
-        ),
-        dash_draggable.ResponsiveGridLayout(
-            id="draggable",
-            children=[
-                html.Div(
-                    id="draggable-books-count-bar",
-                    children=[
-                        dcc.Graph(
-                            id="books-count-bar",
-                            figure=get_books_by_author_count(),
-                            responsive=True,
-                            style={"min-height": "0", "flex-grow": "1"},
-                        )
-                    ],
-                    style={
-                        "height": "100%",
-                        "width": "100%",
-                        "display": "flex",
-                        "flex-direction": "column",
-                        "flex-grow": "0",
-                    },
-                ),
-                dcc.Graph(
-                    id="books-by-year-bar",
-                    figure=get_books_by_year(),
-                    responsive=True,
-                    style={"min-height": "0", "flex-grow": "1"},
-                ),
-                dcc.Graph(
-                    id="expenditure-by-year-bar",
-                    figure=get_expenditure_by_year(),
-                    responsive=True,
-                    style={"min-height": "0", "flex-grow": "1"},
-                ),
-                dcc.Graph(
-                    id="books-types-pie",
-                    figure=get_count_books_by_types(),
-                    responsive=True,
-                    style={"min-height": "0", "flex-grow": "1"},
-                ),
-                dcc.Graph(
-                    id="books-availability-pie",
-                    figure=get_books_availability(),
-                    responsive=True,
-                    style={"min-height": "0", "flex-grow": "1"},
-                ),
-                html.Div(
-                    id="draggable-dropdown-type-filter",
-                    children=[
-                        html.H2(
-                            "Livros por tipo",
-                            style={
-                                "textAlign": "center",
-                                "margin": "20px 20px 20px 50px",
-                                "font-size": "17px",
-                                "font-family": "Arial",
-                                "font-weight": "normal",
-                                "color": "#566573",
-                            },
-                        ),
-                        dcc.Dropdown(
-                            id="dropdown-type-filter",
-                            options=[
-                                {"label": tipo, "value": tipo}
-                                for tipo in get_books_by_type()["Tipo"].unique()
-                            ],
-                            multi=True,
-                            placeholder="Selecione o(s) tipo(s) de livro(s) para filtrar",
-                        ),
-                        dash_table.DataTable(
-                            id="table",
-                            columns=[
-                                {"name": i, "id": i}
-                                for i in get_books_by_type().columns
-                            ],
-                            page_size=9,
-                            sort_action="native",
-                            style_header={
-                                "backgroundColor": "rgb(230, 230, 230)",
-                                "fontWeight": "bold",
-                                "textAlign": "center",
-                            },
-                            style_cell={"textAlign": "center"},
-                        ),
-                    ],
-                    style={"min-height": "0", "flex-grow": "1"},
-                ),
-                html.Div(
-                    id="draggable-books-read-in-each-year",
-                    children=[
-                        html.H2(
-                            "Livros lidos em cada ano",
-                            style={
-                                "textAlign": "center",
-                                "margin": "20px 20px 20px 50px",
-                                "font-size": "17px",
-                                "font-family": "Arial",
-                                "font-weight": "normal",
-                                "color": "#566573",
-                            },
-                        ),
-                        dcc.Dropdown(
-                            id="dropdown-year-filter",
-                            options=[
-                                {"label": str(ano), "value": ano}
-                                for ano in get_books_read_in_each_year()[
-                                    "Ano da leitura"
-                                ].unique()
-                            ],
-                            placeholder="Selecione o ano para filtrar",
-                        ),
-                        dash_table.DataTable(
-                            id="table-books-read-in-each-year",
-                            columns=[
-                                {"name": i, "id": i}
-                                for i in get_books_read_in_each_year().columns
-                            ],
-                            page_size=9,
-                            sort_action="native",
-                            style_header={
-                                "backgroundColor": "rgb(230, 230, 230)",
-                                "fontWeight": "bold",
-                                "textAlign": "center",
-                            },
-                            style_cell={"textAlign": "center"},
-                        ),
-                    ],
-                ),
-                html.Div(
-                    id="draggable-books-prices",
-                    children=[
-                        html.H2(
-                            "Preços dos livros",
-                            style={
-                                "textAlign": "center",
-                                "margin": "20px 20px 20px 50px",
-                                "font-size": "17px",
-                                "font-family": "Arial",
-                                "font-weight": "normal",
-                                "color": "#566573",
-                            },
-                        ),
-                        dash_table.DataTable(
-                            id="table-books-prices",
-                            columns=[
-                                {
-                                    "name": i,
-                                    "id": i,
-                                    "type": "numeric",
-                                    "format": Format(precision=2, scheme=Scheme.fixed),
-                                }
-                                for i in get_books_prices().columns
-                            ],
-                            data=get_books_prices().to_dict(orient="records"),
-                            page_size=9,
-                            sort_action="native",
-                            style_header={
-                                "backgroundColor": "rgb(230, 230, 230)",
-                                "fontWeight": "bold",
-                                "textAlign": "center",
-                            },
-                            style_cell={"textAlign": "center"},
-                        ),
-                    ],
-                ),
-                dcc.Graph(
-                    id="avg-book-price",
-                    figure=get_avg_books_price(),
-                ),
-                dcc.Graph(
-                    id="avg-book-price-by-type-physical",
-                    figure=get_avg_book_price_by_type("Físico"),
-                ),
-                dcc.Graph(
-                    id="avg-book-price-by-type-digital",
-                    figure=get_avg_book_price_by_type("Digital"),
-                ),
-                html.Div(
-                    id="draggable-books-not-available",
-                    children=[
-                        html.H2(
-                            "Livros não disponíveis",
-                            style={
-                                "textAlign": "center",
-                                "margin": "20px 20px 20px 50px",
-                                "font-size": "17px",
-                                "font-family": "Arial",
-                                "font-weight": "normal",
-                                "color": "#566573",
-                            },
-                        ),
-                        dash_table.DataTable(
-                            id="table-books-not-available",
-                            columns=[
-                                {"name": i, "id": i}
-                                for i in get_books_not_available().columns
-                            ],
-                            data=get_books_not_available().to_dict(orient="records"),
-                            page_size=9,
-                            sort_action="native",
-                            style_header={
-                                "backgroundColor": "rgb(230, 230, 230)",
-                                "fontWeight": "bold",
-                                "textAlign": "center",
-                            },
-                            style_cell={"textAlign": "center"},
-                        ),
-                    ],
-                ),
-            ],
-        ),
-    ]
-)
+def server_layout():
+    return dbc.Container(
+        [
+            html.H1(
+                "Acervo dashboard",
+                style={
+                    "textAlign": "center",
+                    "margin": "center",
+                    "font-size": "40px",
+                    "font-family": "Arial",
+                    "font-weight": "bold",
+                },
+            ),
+            dash_draggable.ResponsiveGridLayout(
+                id="draggable",
+                layouts=load_layout() if load_layout() else {"lg": []},
+                children=[
+                    html.Div(
+                        id="draggable-books-count-bar",
+                        children=[
+                            dcc.Graph(
+                                id="books-count-bar",
+                                figure=get_books_by_author_count(),
+                                responsive=True,
+                                style={"min-height": "0", "flex-grow": "1"},
+                            )
+                        ],
+                        style={
+                            "height": "100%",
+                            "width": "100%",
+                            "display": "flex",
+                            "flex-direction": "column",
+                            "flex-grow": "0",
+                        },
+                    ),
+                    dcc.Graph(
+                        id="books-by-year-bar",
+                        figure=get_books_by_year(),
+                        responsive=True,
+                        style={"min-height": "0", "flex-grow": "1"},
+                    ),
+                    dcc.Graph(
+                        id="expenditure-by-year-bar",
+                        figure=get_expenditure_by_year(),
+                        responsive=True,
+                        style={"min-height": "0", "flex-grow": "1"},
+                    ),
+                    dcc.Graph(
+                        id="books-types-pie",
+                        figure=get_count_books_by_types(),
+                        responsive=True,
+                        style={"min-height": "0", "flex-grow": "1"},
+                    ),
+                    dcc.Graph(
+                        id="books-availability-pie",
+                        figure=get_books_availability(),
+                        responsive=True,
+                        style={"min-height": "0", "flex-grow": "1"},
+                    ),
+                    html.Div(
+                        id="draggable-dropdown-type-filter",
+                        children=[
+                            html.H2(
+                                "Livros por tipo",
+                                style={
+                                    "textAlign": "center",
+                                    "margin": "20px 20px 20px 50px",
+                                    "font-size": "17px",
+                                    "font-family": "Arial",
+                                    "font-weight": "normal",
+                                    "color": "#566573",
+                                },
+                            ),
+                            dcc.Dropdown(
+                                id="dropdown-type-filter",
+                                options=[
+                                    {"label": tipo, "value": tipo}
+                                    for tipo in get_books_by_type()["Tipo"].unique()
+                                ],
+                                multi=True,
+                                placeholder="Selecione o(s) tipo(s) de livro(s) para filtrar",
+                            ),
+                            dash_table.DataTable(
+                                id="table",
+                                columns=[
+                                    {"name": i, "id": i}
+                                    for i in get_books_by_type().columns
+                                ],
+                                page_size=9,
+                                sort_action="native",
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                    "textAlign": "center",
+                                },
+                                style_cell={"textAlign": "center"},
+                            ),
+                        ],
+                        style={"min-height": "0", "flex-grow": "1"},
+                    ),
+                    html.Div(
+                        id="draggable-books-read-in-each-year",
+                        children=[
+                            html.H2(
+                                "Livros lidos em cada ano",
+                                style={
+                                    "textAlign": "center",
+                                    "margin": "20px 20px 20px 50px",
+                                    "font-size": "17px",
+                                    "font-family": "Arial",
+                                    "font-weight": "normal",
+                                    "color": "#566573",
+                                },
+                            ),
+                            dcc.Dropdown(
+                                id="dropdown-year-filter",
+                                options=[
+                                    {"label": str(ano), "value": ano}
+                                    for ano in get_books_read_in_each_year()[
+                                        "Ano da leitura"
+                                    ].unique()
+                                ],
+                                placeholder="Selecione o ano para filtrar",
+                            ),
+                            dash_table.DataTable(
+                                id="table-books-read-in-each-year",
+                                columns=[
+                                    {"name": i, "id": i}
+                                    for i in get_books_read_in_each_year().columns
+                                ],
+                                page_size=9,
+                                sort_action="native",
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                    "textAlign": "center",
+                                },
+                                style_cell={"textAlign": "center"},
+                            ),
+                        ],
+                    ),
+                    html.Div(
+                        id="draggable-books-prices",
+                        children=[
+                            html.H2(
+                                "Preços dos livros",
+                                style={
+                                    "textAlign": "center",
+                                    "margin": "20px 20px 20px 50px",
+                                    "font-size": "17px",
+                                    "font-family": "Arial",
+                                    "font-weight": "normal",
+                                    "color": "#566573",
+                                },
+                            ),
+                            dash_table.DataTable(
+                                id="table-books-prices",
+                                columns=[
+                                    {
+                                        "name": i,
+                                        "id": i,
+                                        "type": "numeric",
+                                        "format": Format(
+                                            precision=2, scheme=Scheme.fixed
+                                        ),
+                                    }
+                                    for i in get_books_prices().columns
+                                ],
+                                data=get_books_prices().to_dict(orient="records"),
+                                page_size=9,
+                                sort_action="native",
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                    "textAlign": "center",
+                                },
+                                style_cell={"textAlign": "center"},
+                            ),
+                        ],
+                    ),
+                    dcc.Graph(
+                        id="avg-book-price",
+                        figure=get_avg_books_price(),
+                    ),
+                    dcc.Graph(
+                        id="avg-book-price-by-type-physical",
+                        figure=get_avg_book_price_by_type("Físico"),
+                    ),
+                    dcc.Graph(
+                        id="avg-book-price-by-type-digital",
+                        figure=get_avg_book_price_by_type("Digital"),
+                    ),
+                    html.Div(
+                        id="draggable-books-not-available",
+                        children=[
+                            html.H2(
+                                "Livros não disponíveis",
+                                style={
+                                    "textAlign": "center",
+                                    "margin": "20px 20px 20px 50px",
+                                    "font-size": "17px",
+                                    "font-family": "Arial",
+                                    "font-weight": "normal",
+                                    "color": "#566573",
+                                },
+                            ),
+                            dash_table.DataTable(
+                                id="table-books-not-available",
+                                columns=[
+                                    {"name": i, "id": i}
+                                    for i in get_books_not_available().columns
+                                ],
+                                data=get_books_not_available().to_dict(
+                                    orient="records"
+                                ),
+                                page_size=9,
+                                sort_action="native",
+                                style_header={
+                                    "backgroundColor": "rgb(230, 230, 230)",
+                                    "fontWeight": "bold",
+                                    "textAlign": "center",
+                                },
+                                style_cell={"textAlign": "center"},
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ]
+    )
+
+
+app.layout = server_layout
 
 
 @app.callback(Output("table", "data"), [Input("dropdown-type-filter", "value")])
@@ -709,6 +736,12 @@ def update_table_books_read_in_each_year(selected_year) -> list:
         ]
     )
     return filtered_data.to_dict(orient="records")
+
+
+@app.callback(Output("draggable", "layouts"), [Input("draggable", "layouts")])
+def save_layout_changes(layouts):
+    save_layout(layouts)
+    return layouts
 
 
 if __name__ == "__main__":
