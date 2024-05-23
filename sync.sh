@@ -3,12 +3,12 @@
 # This script is used to sync the library folder between local and remote
 # Requires rclone to be installed
 
-REMOTE=files:/000.FILES/003.PROJECTS
-LOCAL=~/Projects/LIBRARY/
+REMOTE=files:/000.FILES/003.PROJECTS/LIBRARY_DATA_VIZ/
+LOCAL=~/Projects/LIBRARY_DATA_VIZ/
 
 # Sync function
 function sync() {
-    rclone sync $1 $2 --progress -v --transfers 10 --checkers 5
+    rclone sync $1 $2 --progress -v --transfers 10 --checkers 5 --exclude-from .rclone_ignore
 }
 
 # Check if arguments are provided
@@ -18,7 +18,7 @@ if [ -z "$1" ] || [ -z "$2" ]; then
 fi
 
 # Check if rclone is installed
-if ! command -v rclone &> /dev/null; then
+if ! command -v rclone &>/dev/null; then
     echo "rclone could not be found"
     exit 1
 fi
